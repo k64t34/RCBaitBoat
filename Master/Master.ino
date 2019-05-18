@@ -1,8 +1,8 @@
 //TODO. Динамическое определение диапазона значений джойстика
 //https://docs.microsoft.com/en-us/cpp/preprocessor/preprocessor-directives?view=vs-2019
 //#pragma  -libraries C:\Users\Andrew\Documents\Arduino\libraries -fqbn=arduino:avr:nano:cpu=atmega328
-#define n_DEBUG 1
-#include "RC.NRFLite.h" 
+#define _DEBUG 1
+#include "Master.h" 
 bool INPUT_CHG=false; 
 int Pulse = PULSE;
 unsigned long Next_Pulse;
@@ -10,7 +10,7 @@ byte msbf = 40;
 //**********************************************
 void setup() {
 //**********************************************  
-#ifdef _DEBUG 
+#ifdef n_DEBUG 
 Serial.begin(9600);
 Serial.println(); 
 Debugln("Start RC setup");
@@ -94,10 +94,10 @@ for (byte i=0;i!=ANALOG_PIN_COUNT;i++){
 if (INPUT_CHG || millis()>Next_Pulse)
   {
   digitalWrite(PIN_LED_TX, HIGH);  
-  RadioPackage.PackageNumber++;  
-  Debug("Send  # %ld ... ",RadioPackage.PackageNumber);
+  RadioPackageMaster.PackageNumber++;  
+  Debug("Send  # %ld ... ",RadioPackageMaster.PackageNumber);
   unsigned long Start_TX=millis();
-  if (_radio.send(DESTINATION_RADIO_ID, &RadioPackage, sizeof(RadioPackage)), NRFLite::NO_ACK) 
+  if (_radio.send(DESTINATION_RADIO_ID, &RadioPackageMaster, sizeof(RadioPackageMaster)), NRFLite::NO_ACK) 
     {    
       Debugln(" %ld msec Success",millis()-Start_TX);
       Next_Pulse=millis()+Pulse;
@@ -107,9 +107,11 @@ if (INPUT_CHG || millis()>Next_Pulse)
         digitalWrite(PIN_LED_ALARM, HIGH);        
       while (_radio.hasData())
         {     
+          digitalWrite(PIN_LED_RX, HIGH);
             _radio.readData(&_radioData);
             Debug("Received ");
-            Debugln(_radioData.Counter);        
+            Debugln(_radioData.Counter); 
+            digitalWrite(PIN_LED_RX, LOW);       
         }   
     }
     else

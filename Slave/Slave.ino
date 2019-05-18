@@ -1,5 +1,5 @@
 #define _DEBUG 1
-#include "Executor.NRFLite.h"
+#include "Slave.h"
 unsigned long Start_RX_Wait;
 //**********************************************
 void setup() {
@@ -64,59 +64,64 @@ if (Start_RX_Wait>Next_SLAVE_PULSE)
   Debugln("LED_TX_OFF");
   }    */
 
-/*
 Start_RX_Wait=millis();  
 if (Start_RX_Wait>Next_MASTER_PULSE)
-  {
+  {  
   digitalWrite(PIN_LED_ALARM, HIGH);
-  Debugln("Stop engine");
+  if (!_Status_StopEngine)
+    {
+    _Status_StopEngine = true;  
+    Debugln("TODO Stop engine");
+    }
   }
 if (Start_RX_Wait>Next_SLAVE_PULSE)
   {   
-   //digitalWrite(PIN_LED_TX, HIGH);
+   digitalWrite(PIN_LED_TX, HIGH);
    Debugln("Send pulse to master");
-   //if (_radio.send(DESTINATION_RADIO_ID, &RadioPackage, sizeof(RadioPackage)), NRFLite::NO_ACK)
-   // {
+   if (_radio.startSend(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
+    {
     Next_SLAVE_PULSE=Start_RX_Wait+SLAVE_PULSE;
-   // } 
-   //digitalWrite(PIN_LED_TX, LOW);
-   }      
+    } 
+   digitalWrite(PIN_LED_TX, LOW);
+   }
 delay(40);  
-*/
+
 }
 //**********************************************  
 void radioInterrupt(){
 //**********************************************  	
-//if (!_dataWasReceived){  
-  _radio.whatHappened(txOk, txFail, rxReady);  
-  //Debugln("whatHappened=%d",rxReady);
+if (!_dataWasReceived){  
+  _radio.whatHappened(txOk, txFail, rxReady);
   if (rxReady)
   	{
+    _dataWasReceived = true;
     Next_MASTER_PULSE=millis()+MASTER_PULSE;
-  	digitalWrite(PIN_LED_ALARM, LOW);    
+  	_Status_StopEngine = false;  	   
   	digitalWrite(PIN_LED_RX, HIGH);  
-  	_dataWasReceived = true;
+  	byte pkgCount=0;
   	while (_radio.hasDataISR())
-  	{
-  		//uint8_t data;    
-  		_radio.readData(&RadioPackage);		
-  		Debug("%ld\t%i\t%i\t%i",RadioPackage.PackageNumber,RadioPackage.data[0],RadioPackage.data[1],RadioPackage.data[2]);  
-  		// Add an Ack data packet to the radio.  The next time we receive data,
-  		// this Ack packet will be sent back to the transmitting radio.
-  		//uint8_t ackData = RadioPackage;
-  		//_radio.addAckData(&ackData, sizeof(ackData));
-      #ifdef _DEBUG 
-  		//Debug(", Added Ack ");
-  		//Debugln("%d",ackData);
-  		//Serial.flush(); // Serial uses interrupts so let's ensure printing is complete before processing another radio interrupt.
-      #endif
+  	{  		
+  		_radio.readData(&RadioPackageMaster);
+     pkgCount++;
+  		Debugln("%ld\t%i\t%i\t%i",RadioPackageMaster.PackageNumber,RadioPackageMaster.data[0],RadioPackageMaster.data[1],RadioPackageMaster.data[2]);  
   	}
-    digitalWrite(PIN_LED_RX, LOW);    
-    Debugln("EXEC");
+    digitalWrite(PIN_LED_RX, LOW);
+    if (pkgCount==0)
+      {
+      digitalWrite(PIN_LED_ALARM, HIGH);
+      Debugln("Fake RX");
+      }
+    else
+      {
+      digitalWrite(PIN_LED_ALARM, LOW); 
+      Debugln("TODO EXEC");
+      }
+      
     #ifdef _DEBUG 
     Serial.flush(); // Serial uses interrupts so let's ensure printing is complete before processing another radio interrupt.
     #endif
     _dataWasReceived = false;
   	}
-//  }
+  }
+
 }

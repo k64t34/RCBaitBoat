@@ -44,8 +44,8 @@ struct myAnalogPin {
 void Map1024to180(int *Raw, byte *Value );
 #define ANALOG_PIN_COUNT 2
 myAnalogPin AnalogPin[]={
-{PIN_WEEL_X,"WEEL_X",Map1024to180,& RadioPackage.data[bWEEL_X]},
-{PIN_WEEL_Y,"WEEL_Y",Map1024to180,& RadioPackage.data[bWEEL_Y]},
+{PIN_WEEL_X,"WEEL_X",Map1024to180,& RadioPackageMaster.data[bWEEL_X]},
+{PIN_WEEL_Y,"WEEL_Y",Map1024to180,& RadioPackageMaster.data[bWEEL_Y]},
 };
 //
 // Digital Input
@@ -70,8 +70,8 @@ void Unblock_MIN_SPEED(myButttonPin *B, int I );
 void dummy(myButttonPin *B, int I);
 myButttonPin Buttton[]={
 {PIN_BUTTON_MIN_SPEED,"BUTTON_MIN_SPEED",false,Unblock_MIN_SPEED},
-{PIN_BUTTON_UNLOAD_STERN,"BUTTON_UNLOAD_STERN",false,dummy,& RadioPackage.data[bBUTTONS],bBUTTONS_UNLOAD_STERN_BIT},
-{PIN_BUTTON_UNLOAD_CENTR,"BUTTON_UNLOAD_CENTR",false,dummy,& RadioPackage.data[bBUTTONS],bBUTTONS_UNLOAD_CENTR}
+{PIN_BUTTON_UNLOAD_STERN,"BUTTON_UNLOAD_STERN",false,dummy,& RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_STERN_BIT},
+{PIN_BUTTON_UNLOAD_CENTR,"BUTTON_UNLOAD_CENTR",false,dummy,& RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_CENTR}
 };
 
 
