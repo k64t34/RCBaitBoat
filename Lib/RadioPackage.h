@@ -2,6 +2,8 @@
 // Radio
 //
 #define RADIO_CH  123
+#define RADIO_BITRATE  NRFLite::BITRATE2MBPS //enum Bitrates { BITRATE2MBPS, BITRATE1MBPS, BITRATE250KBPS };
+
 //
 // Master Radio Packet
 //

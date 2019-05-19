@@ -37,7 +37,7 @@ digitalWrite(PIN_LED_TX, LOW);
 delay (500);
 digitalWrite(PIN_LED_RX, LOW);   
 delay (500);
-if (!_radio.init(RADIO_ID, PIN_RADIO_CE, PIN_RADIO_CSN,NRFLite::BITRATE250KBPS,RADIO_CH  ))
+if (!_radio.init(RADIO_ID, PIN_RADIO_CE, PIN_RADIO_CSN,RADIO_BITRATE,RADIO_CH  ))
     {
         Debug("Cannot communicate with radio");
         bool LED_ALARM=true;
@@ -105,14 +105,14 @@ if (INPUT_CHG || millis()>Next_Pulse)
         digitalWrite(PIN_LED_ALARM, LOW);  
       else
         digitalWrite(PIN_LED_ALARM, HIGH);        
-      while (_radio.hasData())
+      /*while (_radio.hasData())
         {     
           digitalWrite(PIN_LED_RX, HIGH);
             _radio.readData(&_radioData);
             Debug("Received ");
             Debugln(_radioData.Counter); 
             digitalWrite(PIN_LED_RX, LOW);       
-        }   
+        }   */
     }
     else
     {

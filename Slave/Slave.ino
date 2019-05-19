@@ -20,7 +20,7 @@ digitalWrite(PIN_LED_TX, LOW);
 delay (500);
 digitalWrite(PIN_LED_RX, LOW);   
 delay (500);
-if (!_radio.init(RADIO_ID, PIN_RADIO_CE, PIN_RADIO_CSN,NRFLite::BITRATE250KBPS,RADIO_CH  ))
+if (!_radio.init(RADIO_ID, PIN_RADIO_CE, PIN_RADIO_CSN,RADIO_BITRATE,RADIO_CH  ))
     {
         Debug("Cannot communicate with radio");
         bool LED_ALARM=true;
@@ -76,13 +76,20 @@ if (Start_RX_Wait>Next_MASTER_PULSE)
   }
 if (Start_RX_Wait>Next_SLAVE_PULSE)
   {   
+   Debug("Send pulse to master..");
    digitalWrite(PIN_LED_TX, HIGH);
-   Debugln("Send pulse to master");
-   if (_radio.startSend(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
+   //if (_radio.startSend(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
+   if (true)//(_radio.send(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
     {
+    digitalWrite(PIN_LED_TX, LOW);      
     Next_SLAVE_PULSE=Start_RX_Wait+SLAVE_PULSE;
-    } 
-   digitalWrite(PIN_LED_TX, LOW);
+    Debugln(" OK");
+    }
+   else
+    { 
+    Debugln(" FAIL");
+    digitalWrite(PIN_LED_ALARM, HIGH);   
+    }   
    }
 delay(40);  
 
@@ -90,7 +97,7 @@ delay(40);
 //**********************************************  
 void radioInterrupt(){
 //**********************************************  	
-if (!_dataWasReceived){  
+//if (!_dataWasReceived){  
   _radio.whatHappened(txOk, txFail, rxReady);
   if (rxReady)
   	{
@@ -117,11 +124,10 @@ if (!_dataWasReceived){
       Debugln("TODO EXEC");
       }
       
-    #ifdef _DEBUG 
+    #ifdef _DEBUG     
     Serial.flush(); // Serial uses interrupts so let's ensure printing is complete before processing another radio interrupt.
     #endif
     _dataWasReceived = false;
-  	}
+//  	}
   }
-
 }
