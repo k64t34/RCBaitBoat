@@ -5,7 +5,7 @@ unsigned long Start_RX_Wait;
 void setup() {
 //**********************************************  
 #ifdef _DEBUG 
-Serial.begin(9600);
+Serial.begin(57600);
 Serial.println(); 
 Debugln("Start EXE setup");
 #endif
@@ -42,6 +42,16 @@ Debugln("-------------------------");
 //**********************************************
 void loop() {
 //**********************************************  
+if (_dataWasReceived)
+  {
+  _dataWasReceived = false;
+  while (_radio.hasDataISR())
+    {
+    _radio.readData(&RadioPackageMaster);
+    Debugln("%ld\t%i\t%i\t%i",RadioPackageMaster.PackageNumber,RadioPackageMaster.data[0],RadioPackageMaster.data[1],RadioPackageMaster.data[2]);
+    }
+    digitalWrite(PIN_LED_RX, LOW);
+  }
 /*while (_radio.hasData())
   {
     Debug("LED_ALARM OFF. ");  
@@ -78,8 +88,8 @@ if (Start_RX_Wait>Next_SLAVE_PULSE)
   {   
    Debug("Send pulse to master..");
    digitalWrite(PIN_LED_TX, HIGH);
-   //if (_radio.startSend(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
-   if (true)//(_radio.send(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
+   if (true)//(_radio.startSend(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
+   //if /*(true)*/(_radio.send(DESTINATION_RADIO_ID, &RadioPackageSlave, sizeof(RadioPackageSlave)), NRFLite::NO_ACK)
     {
     digitalWrite(PIN_LED_TX, LOW);      
     Next_SLAVE_PULSE=Start_RX_Wait+SLAVE_PULSE;
@@ -89,11 +99,25 @@ if (Start_RX_Wait>Next_SLAVE_PULSE)
     { 
     Debugln(" FAIL");
     digitalWrite(PIN_LED_ALARM, HIGH);   
-    }   
+    } 
+    //_radio.MyprepForRx();
+    delay(10);    
    }
-delay(40);  
+delay(1);  
 
 }
+//**********************************************  
+void radioInterrupt(){
+//**********************************************    
+uint8_t txOk, txFail, rxReady;
+_radio.whatHappened(txOk, txFail, rxReady);
+if (rxReady)
+  {
+   digitalWrite(PIN_LED_RX, HIGH); 
+  _dataWasReceived = true;
+  }
+}
+/*
 //**********************************************  
 void radioInterrupt(){
 //**********************************************  	
@@ -130,4 +154,4 @@ void radioInterrupt(){
     _dataWasReceived = false;
 //  	}
   }
-}
+}*/

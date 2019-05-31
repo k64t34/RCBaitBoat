@@ -2,7 +2,7 @@
 #include <NRFLite.h>
 #include <RadioPackage.h>
 #define MASTER_PULSE 1500
-#define SLAVE_PULSE 10000
+#define SLAVE_PULSE 5000
 unsigned long Next_MASTER_PULSE;
 unsigned long Next_SLAVE_PULSE;
 //
@@ -20,7 +20,7 @@ unsigned long Next_SLAVE_PULSE;
 #define RADIO_ID 0
 #define DESTINATION_RADIO_ID 1
 NRFLite _radio;
-uint8_t txOk, txFail, rxReady;
+//uint8_t txOk, txFail, rxReady;
 volatile uint8_t _dataWasReceived=false; // Note usage of volatile for the global variable being changed in the radio interrupt.
 
 bool _Status_StopEngine = true;

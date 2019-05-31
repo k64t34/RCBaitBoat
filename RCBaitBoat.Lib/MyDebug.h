@@ -1,6 +1,12 @@
 #ifdef _MyDebug
 #else
 #define _MyDebug
+
+//**********************************************
+#define BinToString(b) {"10101010"}	
+
+
+
 #ifdef _DEBUG 
 #define PRINTF_BUF 80
 //**********************************************

@@ -1,96 +1,76 @@
 #include <MyDebug.h>
-#include <NRFLite.h>
+#include "config.h"
 #include <RadioPackage.h> 
-//
-#define FPS 25 
-#define PULSE 1000
-//
-// Pins
-//
-#define PIN_LED_TX 1
-#define PIN_LED_RX 0
-#define PIN_LED_ALARM 6
-#define PIN_RADIO_CE  7
-#define PIN_RADIO_CSN  8
-#define PIN_RADIO_IRQ  2
-#define PIN_WEEL_X    A1
-#define PIN_WEEL_Y    A0
-#define PIN_BUTTON_MIN_SPEED 16 // Dead slow ahead  http://sea-library.ru/nesenie-fahti/283-komandi.html
-#define PIN_BUTTON_UNLOAD_STERN  18 
-#define PIN_BUTTON_UNLOAD_CENTR  17
-#define MIN_SHIFT 10
+#include <NRFLite.h>
 //
 // Radio
 //
 NRFLite _radio;
-enum RadioStates { StartSync, RunDemos };
-struct RadioPacket { uint8_t Counter; RadioStates RadioState; uint8_t Data[29]; };
-RadioPacket _radioData;
-#define RADIO_ID 1
-#define DESTINATION_RADIO_ID 0
 //
 // Analog Input
 //
 struct myAnalogPin {
   byte Pin;
-  String  Name;
+  String  Name;  
   byte(*RawToValue)(int *, byte *);
   byte *RadioPackegData;
+  int Mmin;
+  int Mmax;
+  int Mstart;
+  int Mdeviation;
+  byte Cmin;
+  byte Cmax;
+  byte Cstart;
   int RawValue;
+  int RawValueLast;
   byte Value;
-  byte LastValue;
-  
+  byte LastValue;    
+  float Kmin;
+  float Kmax;  
   };
 void Map1024to180(int *Raw, byte *Value );
+void MapWeelY();
 #define ANALOG_PIN_COUNT 2
+#define WEELx 0
+#define WEELy 1
 myAnalogPin AnalogPin[]={
-{PIN_WEEL_X,"WEEL_X",Map1024to180,& RadioPackageMaster.data[bWEEL_X]},
-{PIN_WEEL_Y,"WEEL_Y",Map1024to180,& RadioPackageMaster.data[bWEEL_Y]},
+{PIN_WEEL_X,"WEEL_X",Map1024to180,& RadioPackageMaster.data[bWEEL_X],0,1023,512,32,45,135,90},
+{PIN_WEEL_Y,"WEEL_Y",MapWeelY,& RadioPackageMaster.data[bWEEL_Y],0,1023,512,32,0,180,10}
 };
 //
 // Digital Input
 //
-#define BUTTON_MIN_SPEED 2
-#define BUTTON_UNLOAD_STERN  3
-#define BUTTON_UNLOAD_CENTR  4  
 struct myButttonPin {
-  byte Pin;
+  byte Pin; 
   String  Name;
-  bool Block;
+  bool Block; //Если значение заблокировано, то не смотря на поступающие данные поле Value остается неизменным
   void (*Unblock)(myButttonPin *, int *);
   byte *RadioPackegData;
   byte bit;
   int RawValue;
   bool Value;
-  bool LastValue;
-  
+  bool LastValue;  
   };  
 #define BUTTON_PIN_COUNT 3
 void Unblock_MIN_SPEED(myButttonPin *B, int I );
 void dummy(myButttonPin *B, int I);
+#define BUTTON_MIN_SPEED 0
+#define BUTTON_UNLOAD_STERN  0
+#define BUTTON_UNLOAD_CENTR  1  
 myButttonPin Buttton[]={
-{PIN_BUTTON_MIN_SPEED,"BUTTON_MIN_SPEED",false,Unblock_MIN_SPEED},
-{PIN_BUTTON_UNLOAD_STERN,"BUTTON_UNLOAD_STERN",false,dummy,& RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_STERN_BIT},
-{PIN_BUTTON_UNLOAD_CENTR,"BUTTON_UNLOAD_CENTR",false,dummy,& RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_CENTR}
+{PIN_BUTTON_MIN_SPEED,"BUTTON_MIN_SPEED",false,Unblock_MIN_SPEED,0},
+{PIN_BUTTON_UNLOAD_STERN,"BUTTON_UNLOAD_STERN",false,dummy,&RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_STERN_BIT},
+{PIN_BUTTON_UNLOAD_CENTR,"BUTTON_UNLOAD_CENTR",false,dummy,&RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_CENTR}
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//***********************************************************
+void Unblock_MIN_SPEED(myButttonPin *B, int I ){
+//***********************************************************  
+if (!B[I].Value && B[I].LastValue && B[I].RawValue==1) 
+  B[I].Block=false;
+}
+//***********************************************************  
+void dummy(myButttonPin *B, int I){;} 
 //***********************************************************
 void Map1024to180(int *Raw, byte *Value ){
 //***********************************************************  
@@ -100,12 +80,33 @@ void Map1024to180(int *Raw, byte *Value ){
 byte newValue = round(float(*Raw) * 0.17578125);
 //Serial.print("newValue=");Serial.println(newValue);
 //Serial.print("Value=");Serial.println(*Value);
-if (abs(newValue-(*Value))>MIN_SHIFT) *Value= newValue;
+if (abs(newValue-(*Value))>MIN_SHIFT)
+  *Value= newValue;
 }
+#ifdef _DEBUG
 //***********************************************************
-void Unblock_MIN_SPEED(myButttonPin *B, int I ){
-//***********************************************************  
-if (!B[I].Value && B[I].LastValue && B[I].RawValue==1) 
-  B[I].Block=false;
+void ByteToBitString(char* S,byte Byte, byte Bit ){
+//***********************************************************
+for (byte i=0;i!=8;i++)
+  {
+  //Serial.print(Byte,BIN);Serial.print(" ");Serial.println(Byte&1,BIN);  
+  if (i==Bit) S[7-i]=(Byte&1)?'I':'Q';
+  else        S[7-i]=(Byte&1)?'1':'0';  
+  Byte=Byte>>1;
+  }
+S[8]='\0';  
 }
-void dummy(myButttonPin *B, int I){;}  
+#endif
+//***********************************************************
+void MapWeelY(){
+//***********************************************************  
+if (abs(AnalogPin[WEELy].RawValue-AnalogPin[WEELy].RawValueLast)>AnalogPin[WEELy].Mdeviation)
+  {
+  if (abs(AnalogPin[WEELy].RawValue-AnalogPin[WEELy].Mstart)<=AnalogPin[WEELy].Mdeviation+AnalogPin[WEELy].Mdeviation)
+    AnalogPin[WEELy].Value = AnalogPin[WEELy].Cstart;
+  else if (AnalogPin[WEELy].RawValue<AnalogPin[WEELy].Mstart)
+    AnalogPin[WEELy].Value = AnalogPin[WEELy].Cmin;
+  else 
+    AnalogPin[WEELy].Value = AnalogPin[WEELy].Cstart + round(AnalogPin[WEELy].Kmax * (AnalogPin[WEELy].RawValue - AnalogPin[WEELy].Mstart)) ; 
+  }
+}
