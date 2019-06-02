@@ -6,37 +6,58 @@
 // Radio
 //
 NRFLite _radio;
+myRadioPackageMaster RadioPackageMaster;
+volatile myRadioPackageSlave RadioPackageSlave;
+volatile bool _dataWasReceived=false; // Flag to show being changed in the radio interrupt with Rx status.
 //
 // Analog Input
 //
 struct myAnalogPin {
   byte Pin;
-  String  Name;  
-  byte(*RawToValue)(int *, byte *);
-  byte *RadioPackegData;
+  #ifdef _DEBUG
+  String  Name; 
+  #endif
   int Mmin;
   int Mmax;
   int Mstart;
-  int Mdeviation;
-  byte Cmin;
-  byte Cmax;
-  byte Cstart;
+  int Mdeviation;  
   int RawValue;
-  int RawValueLast;
-  byte Value;
-  byte LastValue;    
-  float Kmin;
-  float Kmax;  
+  int RawValueLast;   
   };
-void Map1024to180(int *Raw, byte *Value );
-void MapWeelY();
+
 #define ANALOG_PIN_COUNT 2
 #define WEELx 0
 #define WEELy 1
 myAnalogPin AnalogPin[]={
-{PIN_WEEL_X,"WEEL_X",Map1024to180,& RadioPackageMaster.data[bWEEL_X],0,1023,512,32,45,135,90},
-{PIN_WEEL_Y,"WEEL_Y",MapWeelY,& RadioPackageMaster.data[bWEEL_Y],0,1023,512,32,0,180,10}
+{PIN_WEEL_X,"WEEL_X",0,1023,512,32},
+{PIN_WEEL_Y,"WEEL_Y",0,1023,512,32}
 };
+//
+//Control
+//
+struct myExecutor {
+  int idAnalogInput;
+  char Name[16];  
+  byte(*RawToValue)(int);
+  byte *RadioPackegData; 
+  byte Cmin;
+  byte Cmax;
+  byte Cstart;
+  byte Value;
+  byte LastValue;    
+  float Kmin;
+  float Kmax; 
+};
+void MapWeelY(int i);
+void MapWeelX(int i);
+#define EXECUTOR_COUNT 4
+myExecutor Executor[]={
+  {WEELx,"WEEL_XL",MapWeelX,& RadioPackageMaster.data[bWEEL_XL],45,135,90},
+  {WEELx,"WEEL_XR",MapWeelX,& RadioPackageMaster.data[bWEEL_XR],45,135,90},
+  {WEELy,"WEEL_YL",MapWeelY,& RadioPackageMaster.data[bWEEL_YL],0,30,15},  
+  {WEELy,"WEEL_YR",MapWeelY,& RadioPackageMaster.data[bWEEL_YR],0,90,20}
+  };
+
 //
 // Digital Input
 //
@@ -62,7 +83,6 @@ myButttonPin Buttton[]={
 {PIN_BUTTON_UNLOAD_STERN,"BUTTON_UNLOAD_STERN",false,dummy,&RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_STERN_BIT},
 {PIN_BUTTON_UNLOAD_CENTR,"BUTTON_UNLOAD_CENTR",false,dummy,&RadioPackageMaster.data[bBUTTONS],bBUTTONS_UNLOAD_CENTR}
 };
-
 //***********************************************************
 void Unblock_MIN_SPEED(myButttonPin *B, int I ){
 //***********************************************************  
@@ -83,30 +103,36 @@ byte newValue = round(float(*Raw) * 0.17578125);
 if (abs(newValue-(*Value))>MIN_SHIFT)
   *Value= newValue;
 }
-#ifdef _DEBUG
 //***********************************************************
-void ByteToBitString(char* S,byte Byte, byte Bit ){
-//***********************************************************
-for (byte i=0;i!=8;i++)
-  {
-  //Serial.print(Byte,BIN);Serial.print(" ");Serial.println(Byte&1,BIN);  
-  if (i==Bit) S[7-i]=(Byte&1)?'I':'Q';
-  else        S[7-i]=(Byte&1)?'1':'0';  
-  Byte=Byte>>1;
-  }
-S[8]='\0';  
-}
-#endif
-//***********************************************************
-void MapWeelY(){
+void MapWeelY(int i){
 //***********************************************************  
-if (abs(AnalogPin[WEELy].RawValue-AnalogPin[WEELy].RawValueLast)>AnalogPin[WEELy].Mdeviation)
+if (!Buttton[BUTTON_MIN_SPEED].Value)
+  Executor[i].Value = Executor[i].Cmin;
+else
+  { 
+  int idAnalogInput=Executor[i].idAnalogInput;
+  if (abs(AnalogPin[idAnalogInput].RawValue-AnalogPin[idAnalogInput].RawValueLast)>AnalogPin[idAnalogInput].Mdeviation)
+    {
+    if (abs(AnalogPin[idAnalogInput].RawValue-AnalogPin[idAnalogInput].Mstart)<=AnalogPin[idAnalogInput].Mdeviation+AnalogPin[idAnalogInput].Mdeviation)
+      Executor[i].Value = Executor[i].Cstart;
+    else if (AnalogPin[idAnalogInput].RawValue<AnalogPin[idAnalogInput].Mstart)
+      Executor[i].Value = Executor[i].Cmin;
+    else 
+      Executor[i].Value = Executor[i].Cstart + round(Executor[i].Kmax * (AnalogPin[idAnalogInput].RawValue - AnalogPin[idAnalogInput].Mstart)) ; 
+    }
+  }    
+}
+//***********************************************************
+void MapWeelX(int i){
+//***********************************************************  
+int idAnalogInput=Executor[i].idAnalogInput;
+if (abs(AnalogPin[idAnalogInput].RawValue-AnalogPin[idAnalogInput].RawValueLast)>AnalogPin[idAnalogInput].Mdeviation)
   {
-  if (abs(AnalogPin[WEELy].RawValue-AnalogPin[WEELy].Mstart)<=AnalogPin[WEELy].Mdeviation+AnalogPin[WEELy].Mdeviation)
-    AnalogPin[WEELy].Value = AnalogPin[WEELy].Cstart;
-  else if (AnalogPin[WEELy].RawValue<AnalogPin[WEELy].Mstart)
-    AnalogPin[WEELy].Value = AnalogPin[WEELy].Cmin;
+  if (abs(AnalogPin[idAnalogInput].RawValue-AnalogPin[idAnalogInput].Mstart)<=AnalogPin[idAnalogInput].Mdeviation+AnalogPin[idAnalogInput].Mdeviation)
+    Executor[i].Value = Executor[i].Cstart;
+  else if (AnalogPin[idAnalogInput].RawValue<AnalogPin[idAnalogInput].Mstart)
+    Executor[i].Value = Executor[i].Cstart - round(Executor[i].Kmin * (AnalogPin[idAnalogInput].Mstart - AnalogPin[idAnalogInput].RawValue)) ; 
   else 
-    AnalogPin[WEELy].Value = AnalogPin[WEELy].Cstart + round(AnalogPin[WEELy].Kmax * (AnalogPin[WEELy].RawValue - AnalogPin[WEELy].Mstart)) ; 
+    Executor[i].Value = Executor[i].Cstart + round(Executor[i].Kmax * (AnalogPin[idAnalogInput].RawValue - AnalogPin[idAnalogInput].Mstart)) ; 
   }
 }

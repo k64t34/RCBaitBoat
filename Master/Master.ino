@@ -7,7 +7,6 @@
 
 #define _DEBUG 1
 #include "Master.h" 
-volatile bool _dataWasReceived=false; // Flag to show being changed in the radio interrupt with Rx status.
 unsigned long time; //Current time
 int Master_pulse = MASTER_PULSE; //Период (милисекунд) отправки контрольных пакетов от мастера к исполнителю
 unsigned long Next_Master_pulse; //Время (милисекунд)по достижению котрого отправлять контрольный пакет от мастера к исполнителю
@@ -49,17 +48,21 @@ if (!_radio.init(RADIO_ID_MASTER, PIN_RADIO_CE, PIN_RADIO_CSN,NRFLite::BITRATE25
     #endif 
     }       
   }
-Debugln("\nMstart\tKmin\tKmax\tName");
+Debugln("\nMstart\tMmin\tMmax\tName");
 for (byte i=0;i!=ANALOG_PIN_COUNT;i++){
   pinMode(AnalogPin[i].Pin,INPUT);
-  AnalogPin[i].Mstart=analogRead(AnalogPin[i].Pin); 
-  AnalogPin[i].Kmax=(float)(AnalogPin[i].Cmax-AnalogPin[i].Cstart)/(float)(AnalogPin[i].Mmax-AnalogPin[i].Mstart);
-  AnalogPin[i].Kmin=(float)(AnalogPin[i].Cstart-AnalogPin[i].Cmin)/(float)(AnalogPin[i].Mstart-AnalogPin[i].Mmin);
+  AnalogPin[i].Mstart=analogRead(AnalogPin[i].Pin);
   #ifdef _DEBUG
-  Debugln("%i\t%s\t%s\t%s",AnalogPin[i].Mstart,String(AnalogPin[i].Kmin,5).c_str(),String(AnalogPin[i].Kmax,5).c_str(),AnalogPin[i].Name.c_str());
-  #endif
-    
+  Debugln("%i\t%i\t%i\t%s",AnalogPin[i].Mstart,AnalogPin[i].Mmin,AnalogPin[i].Mmax,AnalogPin[i].Name.c_str());
+  #endif    
   }
+Debugln("\nCstart\tCmin\tCmax\tKmax\tKmin\tName");  
+for (byte i=0;i!=EXECUTOR_COUNT;i++){  
+  Executor[i].Kmax=(float)(Executor[i].Cmax-Executor[i].Cstart)/(float)(AnalogPin[Executor[i].idAnalogInput].Mmax-AnalogPin[Executor[i].idAnalogInput].Mstart);
+  Executor[i].Kmin=(float)(Executor[i].Cstart-Executor[i].Cmin)/(float)(AnalogPin[Executor[i].idAnalogInput].Mstart-AnalogPin[Executor[i].idAnalogInput].Mmin);  
+  Debugln("%i\t%i\t%i\t%s\t%s\t%s",Executor[i].Cstart,Executor[i].Cmin,Executor[i].Cmax,  
+    String(Executor[i].Kmin,5).c_str(),String(Executor[i].Kmax,5).c_str(),Executor[i].Name);  
+  }  
 for (byte i=0;i!=BUTTON_PIN_COUNT;i++){
   pinMode(Buttton[i].Pin,INPUT_PULLUP);
   }
@@ -136,16 +139,20 @@ else
 //
 // Read PINs
 //
-for (byte i=0;i!=ANALOG_PIN_COUNT;i++){
+for (byte i=0;i!=ANALOG_PIN_COUNT;i++)
+  {
   AnalogPin[i].RawValueLast=AnalogPin[i].RawValue;
-  AnalogPin[i].RawValue=analogRead(AnalogPin[i].Pin);
-  AnalogPin[i].RawToValue(&AnalogPin[i].RawValue,&AnalogPin[i].Value);
-  if (AnalogPin[i].Value!=AnalogPin[i].LastValue){    
-    AnalogPin[i].LastValue=AnalogPin[i].Value;
-    *(AnalogPin[i].RadioPackegData)=AnalogPin[i].Value;
-    INPUT_CHG=true;
-    }
+  AnalogPin[i].RawValue=analogRead(AnalogPin[i].Pin);  
   }
+for (byte i=0;i!=EXECUTOR_COUNT;i++)
+  { 
+  Executor[i].LastValue=Executor[i].Value;
+  Executor[i].RawToValue(i);  
+  if (Executor[i].Value!=Executor[i].LastValue){
+    *(Executor[i].RadioPackegData)=Executor[i].Value;
+    INPUT_CHG=true;
+    }    
+  }  
 for (byte i=0;i!=BUTTON_PIN_COUNT;i++){        
   Buttton[i].RawValue=digitalRead(Buttton[i].Pin);
   if (Buttton[i].Block){(Buttton[i].Unblock)(Buttton,i);}
@@ -168,10 +175,21 @@ for (byte i=0;i!=BUTTON_PIN_COUNT;i++){
     ByteToBitString(Bits,*Buttton[i].RadioPackegData,Buttton[i].bit);
   Debugln("%i\t%i\t%i\t%i\t%s\t%s",i,Buttton[i].Pin,Buttton[i].RawValue,Buttton[i].Value,Bits,Buttton[i].Name.c_str());  
   }
-Debugln("#\tPin#\tRaw\tValue\tMStart/min/max\tCStart/min/max\tName");   
+Debugln("#\tPin#\tRaw\tLast\tName");   
 for (byte i=0;i!=ANALOG_PIN_COUNT;i++){
-  Debugln("%i\t%i\t%i\t%i\t%i/%i/%i\t%i/%i/%i\t%s",i,AnalogPin[i].Pin,AnalogPin[i].RawValue,AnalogPin[i].Value,AnalogPin[i].Mstart,AnalogPin[i].Mmin,AnalogPin[i].Mmax,AnalogPin[i].Cstart,AnalogPin[i].Cmin,AnalogPin[i].Cmax,AnalogPin[i].Name.c_str());    
+  Debugln("%i\t%i\t%i\t%s",AnalogPin[i].Pin,AnalogPin[i].RawValue,AnalogPin[i].RawValueLast,AnalogPin[i].Name.c_str());    
   }
+Debugln("Value\tLast\tName");   
+for (byte i=0;i!=EXECUTOR_COUNT;i++){
+  Debugln("%i\t%i\t%s",Executor[i].Value,Executor[i].LastValue,Executor[i].Name);    
+  }  
+Debugln("SL\tSR\tML\tMR\tBUTTON");   
+Debug("%i\t",RadioPackageMaster.data[bWEEL_XL]);
+Debug("%i\t",RadioPackageMaster.data[bWEEL_XR]);    
+Debug("%i\t",RadioPackageMaster.data[bWEEL_YL]);    
+Debug("%i\t",RadioPackageMaster.data[bWEEL_YR]);    
+Debug("%i\t",RadioPackageMaster.data[bBUTTONS]);        
+
 #endif
 
 if (INPUT_CHG || time >= Next_Master_pulse)
@@ -225,11 +243,11 @@ _radio.whatHappened(txOk, txFail, rxReady);
 if (rxReady)
   {
   #ifdef USE_LEDs
-  digitalWrite(PIN_LED_RX, HIGH);
+  digitalWrite(PIN_LED_RX, HIGH);  
   #endif
-  if (_dataWasReceived)
   #ifdef USE_LEDs
-  digitalWrite(PIN_LED_ALARM, HIGH);
+  if (_dataWasReceived)  
+	digitalWrite(PIN_LED_ALARM, HIGH);  
   #endif
   _dataWasReceived = true;
   statusAlarm=false;      

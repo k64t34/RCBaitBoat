@@ -10,25 +10,30 @@
 //
 // Master Radio Packet
 //
+#define bCOUNT 5
 struct myRadioPackageMaster{
   uint8_t FromRadioId;
   uint32_t OnTimeMillis;
   uint32_t FailedTxCount;
   unsigned long PackageNumber=0;
-  byte data[3]={90,90,0};
-  /*  0 - WEEL_X
-   *  1 - WEEL_Y
-   *  2 - BUTTONS bits:
+  byte data[bCOUNT]={90,90,0,0,0};
+  /*  0 - WEEL_XL
+      1 - WEEL_XR
+      2 - WEEL_YL
+	  3 - WEEL_YR
+      4 - BUTTONS bits:
         0- BUTTON_UNLOAD_STERN
         1- BUTTON_UNLOAD_CENTR  
   */
   };
-#define bWEEL_X 0
-#define bWEEL_Y 1
-#define bBUTTONS 2
+#define bWEEL_XL 0
+#define bWEEL_XR 1
+#define bWEEL_YL 2
+#define bWEEL_YR 3
+#define bBUTTONS 4
 #define bBUTTONS_UNLOAD_STERN_BIT 0
 #define bBUTTONS_UNLOAD_CENTR 1  
-volatile myRadioPackageMaster RadioPackageMaster;
+//volatile myRadioPackageMaster RadioPackageMaster;
 //
 // Slave Radio Packet
 //
@@ -43,5 +48,5 @@ struct myRadioPackageSlave{
 #define bTEMP_M-R 1
 #define bBAT_VOL-L 2
 #define bBAT_VOL-R 3
-volatile myRadioPackageSlave RadioPackageSlave;
+//volatile myRadioPackageSlave RadioPackageSlave;
 

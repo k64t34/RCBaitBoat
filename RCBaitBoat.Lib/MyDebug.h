@@ -42,7 +42,18 @@ va_list ap;
 	va_end(ap);
 Serial.write('\n');	
 }
-
+//***********************************************************
+void ByteToBitString(char* S,byte Byte, byte Bit ){
+//***********************************************************
+for (byte i=0;i!=8;i++)
+  {
+  //Serial.print(Byte,BIN);Serial.print(" ");Serial.println(Byte&1,BIN);  
+  if (i==Bit) S[7-i]=(Byte&1)?'I':'Q';
+  else        S[7-i]=(Byte&1)?'1':'0';  
+  Byte=Byte>>1;
+  }
+S[8]='\0';  
+}
 #else
 #define Debug(...)   {;}	
 #define Debugln(...)   {;}	
